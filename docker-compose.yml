@@ -1,0 +1,46 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://user:password@db:5432/taskqueue
+      - PYTHONPATH=/app
+    depends_on:
+      - db
+    volumes:
+      - .:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - taskqueue-network
+
+  db:
+    image: postgres:13
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=taskqueue
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - taskqueue-network
+
+  worker:
+    build: .
+    environment:
+      - DATABASE_URL=postgresql://user:password@db:5432/taskqueue
+      - PYTHONPATH=/app
+    depends_on:
+      - db
+    volumes:
+      - .:/app
+    command: python app/workers/worker.py
+    networks:
+      - taskqueue-network
+
+volumes:
+  postgres_data:
+
+networks:
+  taskqueue-network:
+    driver: bridge
